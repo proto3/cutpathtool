@@ -3,7 +3,7 @@ from math import cos, sin, pi, fmod
 from copy import deepcopy
 import numpy as np
 
-class PathItem(ABC):
+class Path(ABC):
     @property
     def start(self):
         return self._start
@@ -24,7 +24,7 @@ class PathItem(ABC):
     def reverse(self):
         pass
 
-class Line(PathItem):
+class Line(Path):
     def __init__(self, start, end):
         self._start = np.array(start)
         self._end = np.array(end)
@@ -32,14 +32,14 @@ class Line(PathItem):
         self._closed = False
 
     def __str__(self):
-        return 'Line: ' + str(self._start) + ' ' + str(self._end)
+        return 'Line(' + str(self._start) + ', ' + str(self._end) + ')'
 
     def reverse(self):
         line = deepcopy(self)
-        line._start, line._end = (self._end, self._start)
+        line._start, line._end = self._end, self._start
         return line
 
-class Arc(PathItem):
+class Arc(Path):
     def __init__(self, center, radius, rad_start, rad_end, ccw):
         self._center = np.array(center)
         self._radius = radius
@@ -61,8 +61,8 @@ class Arc(PathItem):
         self._length = self._radius * self._rad_len
 
     def __str__(self):
-        return ('Arc: ' + str(self._center) + ' ' + str(self._radius) + ' ' +
-                str(self._rad_start) + ' ' + str(self._rad_end))
+        return ('Arc(' + str(self._center) + ', ' + str(self._radius) + ', ' +
+                str(self._rad_start) + ', ' + str(self._rad_end) + ')')
 
     @property
     def rad_start(self):
@@ -78,12 +78,12 @@ class Arc(PathItem):
 
     def reverse(self):
         arc = deepcopy(self)
-        arc._start, arc._end = (self._end, self._start)
+        arc._start, arc._end = self._end, self._start
         arc._rad_start, arc._rad_end = (self._rad_end, self._rad_start)
         arc._ccw = not arc._ccw
         return arc
 
-class Circle(PathItem):
+class Circle(Path):
     def __init__(self, center, radius, ccw):
         self._center = np.array(center)
         self._radius = radius
@@ -93,7 +93,7 @@ class Circle(PathItem):
         self._closed = True
 
     def __str__(self):
-        return 'Circle: ' + str(self._center) + ' ' + str(self._radius)
+        return 'Circle(' + str(self._center) + ', ' + str(self._radius) + ')'
 
     @property
     def ccw(self):
@@ -103,3 +103,35 @@ class Circle(PathItem):
         circle = deepcopy(self)
         circle._ccw = not circle._ccw
         return circle
+
+class Polypath(Path):
+    # no verification made on path connectivity
+    def __init__(self, paths):
+        if not paths:
+            raise Exception('Empty path list')
+        self._length = 0.
+        self._subpaths = []
+        for p in paths:
+            self._length += p.length
+            if isinstance(p, Polypath):
+                self._subpaths += p._subpaths
+            else:
+                self._subpaths.append(p)
+        self._start = self._subpaths[0].start
+        self._end = self._subpaths[-1].end
+        self._closed = np.allclose(self.start, self.end)
+
+    def __str__(self):
+        s = 'Polypath(' + str(self._subpaths[0])
+        for p in self._subpaths[1:]:
+            s += ', ' + str(p)
+        return s + ')'
+
+    def reverse(self):
+        subpaths_save = self._subpaths
+        self._subpaths = [] # remove subpaths
+        polypath = deepcopy(self) # copy with empty subpaths
+        self._subpaths = subpaths_save # restore subpaths
+        polypath._subpaths = [p.reverse() for p in reversed(self._subpaths)]
+        polypath._start, polypath._end = polypath._end, polypath._start
+        return polypath
