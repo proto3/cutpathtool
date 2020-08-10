@@ -26,6 +26,9 @@ class TestLine:
     def test_closed(self, line):
         assert not line.closed
 
+    def test_generate(self, line):
+        assert np.allclose(line.generate(), np.array(([-1, 3], [4, 7])))
+
 @pytest.fixture()
 def arc():
     return path.Arc([0,5], 2, -1/6*pi, 3/4*pi, True)
@@ -57,6 +60,12 @@ class TestArc:
         assert arc.length == pytest.approx(11/6*pi)
         assert arc.ccw == False
 
+    def test_generate(self, arc):
+        result = arc.generate()
+        assert np.allclose(result[:, 0], [sqrt(3), 4])
+        assert np.allclose(result[:, -1], [-sqrt(2), sqrt(2) + 5])
+        assert result.shape == (2, 17)
+
 @pytest.fixture()
 def circle():
     return path.Circle([-4,0], 3, True)
@@ -83,6 +92,12 @@ class TestCircle:
         assert np.all(np.isnan(circle.start))
         assert np.all(np.isnan(circle.end))
         assert circle.length == pytest.approx(6*pi)
+
+    def test_generate(self, circle):
+        result = circle.generate()
+        assert np.allclose(result[:,  0], [-1, 0])
+        assert np.allclose(result[:, -1], [-1, 0])
+        assert result.shape == (2, 41)
 
 @pytest.fixture()
 def open_polypath():
@@ -116,3 +131,14 @@ class TestPolypath:
         open_polypath = open_polypath.reverse()
         np.testing.assert_almost_equal(open_polypath.start, [4, 2])
         np.testing.assert_almost_equal(open_polypath.end, [-2, -2])
+
+    def test_generate(self, open_polypath, closed_polypath):
+        result = open_polypath.generate()
+        assert np.allclose(result[:,  0], [-2, -2])
+        assert np.allclose(result[:, -1], [4, 2])
+        assert result.shape == (2, 20)
+
+        result = closed_polypath.generate()
+        assert np.allclose(result[:,  0], [1, 0])
+        assert np.allclose(result[:, -1], [1, 0])
+        assert result.shape == (2, 16)
