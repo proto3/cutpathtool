@@ -2,7 +2,7 @@ attrs==19.3.0
 ezdxf==0.13.1
 importlib-metadata==1.7.0
 more-itertools==8.4.0
-numpy==1.19.1
+numpy==1.22.0
 packaging==20.4
 pluggy==0.13.1
 py==1.9.0
